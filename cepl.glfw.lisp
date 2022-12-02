@@ -27,7 +27,9 @@
 
 ;;----------------------------------------------------------------------
 
-(let ((listeners nil))
+
+(let ((listeners '())
+      (cached-events '()))
   ;;
   (defun glfw-register-listener (func)
     (unless (find func listeners)
@@ -35,9 +37,21 @@
   ;;
   (defun glfw-step-v1 (surface)
     (declare (ignore surface))
-    (loop :for listener :in listeners :do
-           (funcall listener nil))
-    (glfw:poll-events)))
+    (loop :for event := (pop cached-events)
+          :while event
+          :do (loop :for listener :in listeners
+                    :do (funcall listener event)))
+    (glfw:poll-events))
+
+  (glfw:def-key-callback key-callback (window key scancode action mod-keys)
+    (declare (ignore window))
+    (pushnew (list :key key scancode action mod-keys) cached-events))
+
+  (glfw:def-framebuffer-size-callback framebuffer-size-callback (window w h)
+    (declare (ignore window))
+    (pushnew (list :framebuffer-size w h) cached-events)))
+    
+
 
 ;;----------------------------------------------------------------------
 
@@ -105,6 +119,8 @@
               :until context
               :do (setf context (create-window major minor)))
            (assert context)
+           (glfw:set-framebuffer-size-callback 'framebuffer-size-callback)
+           (glfw:set-key-callback 'key-callback)
            context)))
 
     (search-for-context)))
