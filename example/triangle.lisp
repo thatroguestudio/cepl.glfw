@@ -12,7 +12,6 @@
 
 (defparameter *array* nil)
 (defparameter *stream* nil)
-(defparameter *running* nil)
 
 ;; Lisp data for triangle vertices
 (defparameter *triangle-data*
@@ -49,19 +48,22 @@
 
 
 (defun run-loop ()
-  (setf *running* t
+  (setf
     ;; Create a gpu array from our Lisp vertex data
         *array* (make-gpu-array *triangle-data* :element-type 'pos-col)
     ;; Create a GPU datastream
         *stream* (make-buffer-stream *array*))
   ;; continue rendering frames until *running* is set to nil
-  (loop :while (and  *running*
-             (not (shutting-down-p))) :do
-     (continuable (step-demo))))
-
-(defun stop-loop ()
-  (setf *running* nil))
+  (livesupport:setup-lisp-repl)
+  (loop :while (not (shutting-down-p))
+        :do (continuable (step-demo))))
 
 (defun run-demo ()
   (cepl:repl)
+  (cepl:register-event-listener
+   (lambda (event)
+     (if (and (eql (first event) :key)
+              (eql (second event) :escape))
+         (cepl:quit)
+         (print event))))
   (run-loop))
