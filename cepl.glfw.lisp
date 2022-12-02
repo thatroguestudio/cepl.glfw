@@ -9,21 +9,14 @@
 (defgeneric glfw-init (&rest init-flags)
   (:method (&rest init-flags)
     (declare (ignore init-flags))
-
     (glfw:initialize)))
-
-(defun init-glfw-low-level (&rest glfw-init-flags)
-  (declare (ignore glfw-init-flags))
-
-  (glfw:initialize))
 
 ;;----------------------------------------------------------------------
 
 (defun glfw-shutdown ()
-  (low-level-quit))
-
-(defun low-level-quit ()
-  (glfw:terminate))
+  (when glfw:*window* (glfw:set-window-should-close))
+  (glfw:terminate)
+  t)
 
 ;;----------------------------------------------------------------------
 
@@ -40,8 +33,7 @@
     (loop :for event := (pop cached-events)
           :while event
           :do (loop :for listener :in listeners
-                    :do (funcall listener event)))
-    (glfw:poll-events))
+                    :do (funcall listener event))))
 
   (glfw:def-key-callback key-callback (window key scancode action mod-keys)
     (declare (ignore window))
@@ -56,7 +48,8 @@
 ;;----------------------------------------------------------------------
 
 (defun glfw-swap (handle)
-  (glfw:swap-buffers handle))
+  (glfw:swap-buffers handle)
+  (glfw:poll-events))
 
 ;;----------------------------------------------------------------------
 
@@ -72,7 +65,8 @@
 (defvar *core-context* t)
 
 (defun glfw-make-current (context surface)
-  (glfw:make-context-current (or context surface)))
+  (declare (ignore context))
+  (glfw:make-context-current surface))
 
 ;;----------------------------------------------------------------------
 
@@ -81,39 +75,36 @@
                           red-size green-size blue-size buffer-size
                           double-buffer hidden resizable)
   (declare (ignore fullscreen buffer-size))
+  (let ((cl-glfw3::prev-error-fun
+         (cl-glfw3:set-error-callback 'cl-glfw3::default-error-fun)))
+   (unless (cffi-sys:null-pointer-p cl-glfw3::prev-error-fun)
+     (%cl-glfw3:set-error-callback cl-glfw3::prev-error-fun)))
   (labels
       ((create-window (major minor)
          (%glfw:window-hint #X00021010 (if double-buffer 1 0))
-
          (glfw:create-window :width width
                              :height height
                              :title title
                              :resizable resizable
                              :visible (not hidden)
                              :decorated (not no-frame)
-
                              :red-bits red-size
                              :green-bits green-size
                              :blue-bits blue-size
                              :depth-bits depth-size
                              :stencil-bits stencil-size
                              :alpha-bits alpha-size
-
-                             :opengl-profile (if *core-context*
-                                                 :opengl-core-profile
-                                                 :opengl-compat-profile)
+                             :opengl-profile :opengl-core-profile
+                             #+darwin :opengl-forward-compat
+                             #+darwin t
                              :context-version-major major
                              :context-version-minor minor)
 
          (glfw:get-current-context))
-       ;; (create-context-by-version (version)
-       ;;   (destructuring-bind (&optional major minor)
-       ;;       (cepl.context:split-float-version version)
-       ;;     (create-window major minor)))
 
        (search-for-context ()
          (let ((context nil)
-               (versions #-darwin`((4 5) (4 4) (4 3) (4 2) (4 1) (4 0) (3 3))
+               (versions #-darwin`((4 6) (4 5) (4 4) (4 3) (4 2) (4 1) (4 0) (3 3))
                          #+darwin`((4 1) (4 0) (3 3))))
            (loop :for (major minor) :in versions
               :until context
@@ -122,11 +113,22 @@
            (glfw:set-framebuffer-size-callback 'framebuffer-size-callback)
            (glfw:set-key-callback 'key-callback)
            context)))
-
+    ;; https://www.glfw.org/docs/latest/group__init.html#ga317aac130a235ab08c6db0834907d85e
+    ;; This function initializes the GLFW library. Before most GLFW functions can be used,
+    ;; GLFW must be initialized, and before an application terminates GLFW should be terminated
+    ;; in order to free any resources allocated during or after initialization.
+    ;; If this function fails, it calls glfwTerminate before returning. If it succeeds, you should
+    ;; call glfwTerminate before the application exits.))
+    ;; Additional calls to this function after successful initialization but before termination will return
+    ;; GLFW_TRUE immediately.
+    ;;
+    ;; So, according to the documentation, we are safe by doing this and not leaking memory. Most importantly
+    ;; We can keep CEPL happy. And do more than one initialization.
+    (glfw:initialize)
     (search-for-context)))
 
 (defun destroy-glfw-surface (surface)
-  (glfw:destroy-window surface))
+  t)
 
 (defun glfw-surface-size (win-handle)
   (glfw:get-window-size win-handle))
@@ -147,7 +149,7 @@
   nil)
 
 (defun glfw-set-surface-title (surface title)
-  (glfw:set-window-title surface title))
+  (glfw:set-window-title title surface))
 
 ;;----------------------------------------------------------------------
 
