@@ -35,9 +35,9 @@
   ;;
   (defun glfw-step-v1 (surface)
     (declare (ignore surface))
-     (loop :for listener :in listeners :do
-            (funcall listener nil))
-     (glfw:poll-events)))
+    (loop :for listener :in listeners :do
+           (funcall listener nil))
+    (glfw:poll-events)))
 
 ;;----------------------------------------------------------------------
 
@@ -98,10 +98,10 @@
        ;;     (create-window major minor)))
 
        (search-for-context ()
-         (let ((context nil))
-           (loop :for (major minor) :in `((4 5) (4 4) (4 3)
-                                          (4 2) (4 1) (4 0)
-                                          (3 3))
+         (let ((context nil)
+               (versions #-darwin`((4 5) (4 4) (4 3) (4 2) (4 1) (4 0) (3 3))
+                         #+darwin`((4 1) (4 0) (3 3))))
+           (loop :for (major minor) :in versions
               :until context
               :do (setf context (create-window major minor)))
            (assert context)
