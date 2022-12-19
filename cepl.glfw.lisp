@@ -131,7 +131,7 @@
   t)
 
 (defun glfw-surface-size (win-handle)
-  (glfw:get-window-size win-handle))
+  (glfw:get-framebuffer-size win-handle))
 
 (defun glfw-set-surface-size (win-handle width height)
   (glfw:set-window-size win-handle width height))
