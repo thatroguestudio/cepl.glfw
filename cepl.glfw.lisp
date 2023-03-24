@@ -37,11 +37,11 @@
 
 (glfw:def-key-callback key-callback (window key scancode action mod-keys)
   (declare (ignore window))
-  (pushnew (list :key key scancode action mod-keys) *cached-events*))
+  (push (list :key key scancode action mod-keys) *cached-events*))
 
 (glfw:def-framebuffer-size-callback framebuffer-size-callback (window w h)
   (declare (ignore window))
-  (pushnew (list :framebuffer-size w h) *cached-events*))
+  (push (list :framebuffer-size w h) *cached-events*))
     
 
 
