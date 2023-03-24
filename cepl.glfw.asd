@@ -7,7 +7,8 @@
   :depends-on (#:cffi
                #:cl-opengl
                #:cl-glfw3
-               #:cepl)
+               #:cepl
+               #:uiop)
   :serial t
   :components ((:file "package")
                (:file "cepl.glfw")))
